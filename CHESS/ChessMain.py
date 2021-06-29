@@ -6,7 +6,7 @@ displaying the current GameState object.
 import pygame as p
 import pygame.event
 
-from Chess_Engine.CHESS import ChessEngineAdvanced
+from Chess_Engine.CHESS import ChessEngineAdvanced, SmartMoveFinder
 
 WIDTH = HEIGHT = 512  # Choose 400 for shorter board. For bigger board, choose 640 or 768
 DIMENSION = 8
@@ -39,13 +39,19 @@ def main():
     running = True
     sqSelected = ()
     playerClicks = []  # Keeps track of player clicks. (Two tuples: [(6, 4), (4, 4)]
+
+    # These flags will be True if a Human is playing white else False.
+    playerOne = False
+    playerTwo = False
+
     while running:
+        humanTurn = (gs.whiteToMove and playerOne) or (not gs.whiteToMove and playerTwo)
         for e in pygame.event.get():
             if e.type == p.QUIT:
                 running = False
             # Mouse Handler
             elif e.type == p.MOUSEBUTTONDOWN:
-                if not gameOver:
+                if not gameOver and humanTurn:
                     location = p.mouse.get_pos()  # Find location coordinate of the mouse
                     col = location[0]//SQ_SIZE
                     row = location[1]//SQ_SIZE
@@ -81,6 +87,16 @@ def main():
                     moveMade = False
                     animate = False
 
+        # AI Move Finder
+        if not gameOver and not humanTurn:
+            AIMove = SmartMoveFinder.findBestMove(gs, validMoves)
+            if AIMove is None:
+                AIMove = SmartMoveFinder.findRandomMove(validMoves)
+            gs.makeMove(AIMove)
+            moveMade = True
+            animate = True
+
+        # This code animates a move made by Players
         if moveMade:
             if animate:
                 animateMove(gs.moveLog[-1], screen, gs.board, clock)
@@ -88,6 +104,7 @@ def main():
             moveMade = False
         drawGameState(screen, gs, validMoves, sqSelected)
 
+        # Check whether checkmate or stalemate has occurred and end the game
         if gs.checkmate:
             gameOver = True
             if gs.whiteToMove:
