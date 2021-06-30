@@ -4,9 +4,10 @@ displaying the current GameState object.
 """
 
 import pygame as p
-import pygame.event
+# import pygame.event
 
-from Chess_Engine.CHESS import ChessEngineAdvanced, SmartMoveFinder
+import ChessEngineAdvanced
+import SmartMoveFinder
 
 WIDTH = HEIGHT = 512  # Choose 400 for shorter board. For bigger board, choose 640 or 768
 DIMENSION = 8
@@ -30,23 +31,28 @@ def main():
     screen = p.display.set_mode((WIDTH, HEIGHT))
     clock = p.time.Clock()
     screen.fill(p.Color('white'))
+
     gs = ChessEngineAdvanced.GameState()
+
     validMoves = gs.getValidMoves()
     moveMade = False  # Flag that checks if a move has been made
     animate = False  # Flag that decides if a move should be animated or not
+
     loadImages()  # Only to be called once so that it doesn't unnecessarily lag our programme
     gameOver = False
-    running = True
+
+    # Keeps track of player clicks.
     sqSelected = ()
-    playerClicks = []  # Keeps track of player clicks. (Two tuples: [(6, 4), (4, 4)]
+    playerClicks = []  # (Two tuples: [(6, 4), (4, 4)]
 
-    # These flags will be True if a Human is playing white else False.
-    playerOne = False
-    playerTwo = False
+    # These flags will be True if a Human is playing else False.
+    playerOne = True  # Alias for White pieces
+    playerTwo = True  # Alias for Black pieces
 
+    running = True
     while running:
         humanTurn = (gs.whiteToMove and playerOne) or (not gs.whiteToMove and playerTwo)
-        for e in pygame.event.get():
+        for e in p.event.get():
             if e.type == p.QUIT:
                 running = False
             # Mouse Handler
@@ -75,17 +81,21 @@ def main():
                             playerClicks = [sqSelected]
             # Key Handler
             elif e.type == p.KEYDOWN:
-                if e.key == p.K_z:  # Undo when "z" key is pressed
+                # Undo a move when "z" key is pressed
+                if e.key == p.K_z:
                     gs.undoMove()
                     moveMade = True
                     animate = False
-                if e.key == p.K_r:  # Reset the board when "r" key is pressed
+                    gameOver = False
+                # Reset the board when "r" key is pressed
+                if e.key == p.K_r:
                     gs = ChessEngineAdvanced.GameState()
                     validMoves = gs.getValidMoves()
                     sqSelected = ()
                     playerClicks = []
                     moveMade = False
                     animate = False
+                    gameOver = False
 
         # AI Move Finder
         if not gameOver and not humanTurn:
@@ -116,7 +126,7 @@ def main():
             drawText(screen, 'STALEMATE')
 
         clock.tick(MAX_FPS)
-        pygame.display.flip()
+        p.display.flip()
 
 
 """
@@ -194,11 +204,15 @@ def animateMove(move, screen, board, clock):
         p.draw.rect(screen, color, endSquare)
         # Draw captured piece at every frame until the moving piece gets there
         if move.pieceCaptured != '--':
+            if move.enPassant:
+                enPassantRow = move.endRow + 1 if move.pieceCaptured[0] == 'b' else move.endRow - 1
+                endSquare = p.Rect(move.endCol * SQ_SIZE, enPassantRow * SQ_SIZE, SQ_SIZE, SQ_SIZE)
             screen.blit(IMAGES[move.pieceCaptured], endSquare)
         # Draw the moving piece
         screen.blit(IMAGES[move.pieceMoved], p.Rect(c * SQ_SIZE, r * SQ_SIZE, SQ_SIZE, SQ_SIZE))
         p.display.flip()
         clock.tick(60)
+
 
 def drawText(screen, text):
     font = p.font.SysFont('Helvetica', 36, True)
@@ -207,5 +221,7 @@ def drawText(screen, text):
     screen.blit(msg, msgbox)
     msg_shadow = font.render(text, False, p.Color('black'))
     screen.blit(msg_shadow, msgbox.move(2, -2))
+
+
 if __name__ == "__main__":
     main()
