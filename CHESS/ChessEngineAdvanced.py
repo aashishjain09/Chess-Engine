@@ -5,7 +5,8 @@ It will also be responsible for determining the valid moves at the current state
 It will also keep a move log.
 """
 
-class GameState():
+
+class GameState:
     def __init__(self):
         self.board = [
             ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
@@ -17,7 +18,7 @@ class GameState():
             ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
             ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']]
         self.moveFunctions = {'p': self.getPawnMoves, 'N': self.getKnightMoves, 'B': self.getBishopMoves,
-                               'R': self.getRookMoves, 'Q': self.getQueenMoves, 'K': self.getKingMoves}
+                              'R': self.getRookMoves, 'Q': self.getQueenMoves, 'K': self.getKingMoves}
         self.whiteToMove = True
         self.moveLog = []
 
@@ -36,7 +37,6 @@ class GameState():
         self.currentCastlingRight = CastleRights(True, True, True, True)
         self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs, self.currentCastlingRight.bqs)]
-
 
         self.inCheck = False
         self.pins = []
@@ -305,7 +305,7 @@ class GameState():
         # allyColor = 'w' if self.whiteToMove else 'b'
         enemyColor = 'b' if self.whiteToMove else 'w'
         for d in directions:
-            for i in range(1,8):
+            for i in range(1, 8):
                 endRow = r + d[0] * i
                 endCol = c + d[1] * i
                 if 0 <= endRow < 8 and 0 <= endCol < 8:
@@ -420,20 +420,22 @@ class GameState():
     def getCastleMoves(self, r, c, moves, allyColor):
         if self.squareUnderAttack(r, c):
             return  # Can't castle when we are in check
-        if (self.whiteToMove and self.currentCastlingRight.wks) or (not self.whiteToMove and self.currentCastlingRight.bks):
+        if (self.whiteToMove and self.currentCastlingRight.wks) or \
+                (not self.whiteToMove and self.currentCastlingRight.bks):
             self.getKingsideCastleMoves(r, c, moves, allyColor)
-        if (self.whiteToMove and self.currentCastlingRight.wqs) or (not self.whiteToMove and self.currentCastlingRight.bqs):
+        if (self.whiteToMove and self.currentCastlingRight.wqs) or \
+                (not self.whiteToMove and self.currentCastlingRight.bqs):
             self.getQueensideCastleMoves(r, c, moves, allyColor)
 
     def getKingsideCastleMoves(self, r, c, moves, allyColor):
         if self.board[r][c+1] == '--' and self.board[r][c+2] == '--' and \
                 not self.squareUnderAttack(r, c+1) and not self.squareUnderAttack(r, c+2):
-            moves.append(Move((r, c), (r, c+2), self.board, isCastleMove=True))
+            moves.append(Move((r, c), (r, c+2), self.board, castle=True))
 
     def getQueensideCastleMoves(self, r, c, moves, allyColor):
         if self.board[r][c - 1] == '--' and self.board[r][c - 2] == '--' and self.board[r][c - 3] == '--' and \
                 not self.squareUnderAttack(r, c - 1) and not self.squareUnderAttack(r, c - 2):
-            moves.append(Move((r, c), (r, c - 2), self.board, isCastleMove=True))
+            moves.append(Move((r, c), (r, c - 2), self.board, castle=True))
 
     """
     Returns if the player is in check, a list of pins, and a list of checks
@@ -581,7 +583,15 @@ class Move:
         if self.enPassant:
             self.pieceCaptured = 'wp' if self.pieceMoved == 'bp' else 'bp'
 
+        self.isCapture = self.pieceCaptured != '--'
         self.moveID = int(str(self.startRow) + str(self.startCol) + str(self.endRow) + str(self.endCol))
+
+    def getChessNotation(self):
+        # [HINT] You can work upon this in future and make proper Chess Notation.
+        return self.getRankFile(self.startRow, self.startCol) + self.getRankFile(self.endRow, self.endCol)
+
+    def getRankFile(self, r, c):
+        return self.colsToFiles[c] + self.rowsToRanks[r]
 
     """
     Overriding the Equals operator
@@ -591,9 +601,27 @@ class Move:
             return self.moveID == other.moveID
         return False
 
-    def getChessNotation(self):
-        # [HINT] You can work upon this in future and make proper Chess Notation.
-        return self.getRankFile(self.startRow, self.startCol) + self.getRankFile(self.endRow, self.endCol)
+    """
+    Overriding the str() function"""
+    def __str__(self):
+        # Castle notation
+        if self.castle:
+            return "O-O" if self.endCol == 6 else "O-O-O"
 
-    def getRankFile(self, r, c):
-        return self.colsToFiles[c] + self.rowsToRanks[r]
+        endSquare = self.getRankFile(self.endRow, self.endCol)
+        # Pawn Moves
+        if self.pieceMoved[1] == 'p':
+            if self.isCapture:
+                return self.colsToFiles[self.startCol] + 'x' + endSquare
+            else:
+                return endSquare
+            # These notations are not available in this method.
+            # Pawn promotions are to be added.
+            # Declaring file or rank of a piece moved, if the other same type of piece can move to that square
+            # Adding a + sign if check was given, and a # sign if checkmate was given
+
+        # Piece Moves
+        moveString = self.pieceMoved[1]
+        if self.isCapture:
+            moveString += 'x'
+        return moveString + endSquare
