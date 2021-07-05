@@ -8,6 +8,7 @@ import pygame as p
 
 import ChessEngineAdvanced
 import SmartMoveFinder
+from multiprocessing import Process, Queue
 
 # Dimension of the playing board. Choose 400 for shorter board. For bigger board, choose 640 or 768
 BOARD_WIDTH = BOARD_HEIGHT = 512
@@ -56,7 +57,12 @@ def main():
 
     # These flags will be True if a Human is playing else False.
     playerOne = True  # Alias for White pieces
-    playerTwo = True  # Alias for Black pieces
+    playerTwo = False  # Alias for Black pieces
+
+    # These flags corresponds to the multiprocessing functionality of the AI and Code
+    AIThinking = False
+    moveFinderProcess = None
+    moveUndone = True
 
     running = True
     while running:
@@ -66,17 +72,20 @@ def main():
                 running = False
             # Mouse Handler
             elif e.type == p.MOUSEBUTTONDOWN:
-                if not gameOver and humanTurn:
+                if not gameOver:
                     location = p.mouse.get_pos()  # Find location coordinate of the mouse
                     col = location[0]//SQ_SIZE
                     row = location[1]//SQ_SIZE
-                    if sqSelected == (row, col) or col > 7:  # The user clicked same square twice or outside board
+                    if col > 7:
                         sqSelected = ()
                         playerClicks = []
+                    if sqSelected == (row, col):  # The user clicked same square twice or outside board
+                        playerClicks = [sqSelected]
+                        sqSelected = ()
                     else:
                         sqSelected = (row, col)
                         playerClicks.append(sqSelected)  # Append for both clicks from the user
-                    if len(playerClicks) == 2:  # After 2nd click, we ask the board to make the move.
+                    if len(playerClicks) == 2 and humanTurn:  # After 2nd click, we ask the board to make the move.
                         move = ChessEngineAdvanced.Move(playerClicks[0], playerClicks[1], gs.board)
                         print(move.getChessNotation())
                         for i in range(len(validMoves)):
@@ -96,6 +105,10 @@ def main():
                     moveMade = True
                     animate = False
                     gameOver = False
+                    if AIThinking:
+                        moveFinderProcess.terminate()
+                        AIThinking = False
+                    moveUndone = True
                 # Reset the board when "r" key is pressed
                 if e.key == p.K_r:
                     gs = ChessEngineAdvanced.GameState()
@@ -105,15 +118,28 @@ def main():
                     moveMade = False
                     animate = False
                     gameOver = False
+                    if AIThinking:
+                        moveFinderProcess.terminate()
+                        AIThinking = False
+                    moveUndone = True
 
         # AI Move Finder
-        if not gameOver and not humanTurn:
-            AIMove = SmartMoveFinder.findBestMove(gs, validMoves)
-            if AIMove is None:
-                AIMove = SmartMoveFinder.findRandomMove(validMoves)
-            gs.makeMove(AIMove)
-            moveMade = True
-            animate = True
+        if not gameOver and not humanTurn and not moveUndone:
+            if not AIThinking:
+                AIThinking =True
+                print('Thinking for a good move....')
+                returnQueue = Queue()  # This is used to pass data between threads
+                moveFinderProcess = Process(target=SmartMoveFinder.findBestMove, args=(gs, validMoves, returnQueue))
+                moveFinderProcess.start()  # Call findBestMove(gs, validMoves, returnQueue)
+                # AIMove = SmartMoveFinder.findBestMove(gs, validMoves)
+            if not moveFinderProcess.is_alive():
+                print("I made a really smart Move.")
+                AIMove = returnQueue.get()
+                AIMove = AIMove if AIMove is not None else SmartMoveFinder.findRandomMove(validMoves)
+                gs.makeMove(AIMove)
+                moveMade = True
+                animate = True
+                AIThinking = False
 
         # This code animates a move made by Players
         if moveMade:
@@ -124,7 +150,7 @@ def main():
         drawGameState(screen, gs, validMoves, sqSelected, moveLogFont)
 
         # Check whether checkmate or stalemate has occurred and end the game
-        if gs.stalemate or gs.stalemate:
+        if gs.stalemate or gs.checkmate:
             gameOver = True
             drawEndGameText(screen, 'STALEMATE' if gs.stalemate else 'Black wins by Checkmate' if gs.whiteToMove else 'White wins by Checkmate')
 
@@ -137,10 +163,10 @@ Responsible for all graphics within the current GameState
 """
 def drawGameState(screen, gs, validMoves, sqSelected, moveLogFont):
     drawBoard(screen)  # This function will draw squares on the board
-    # This function will highlight the selected Square and also highlight the possible valid moves with that piece
+    # This function will highlight the selected Square and the possible valid moves with selected piece
     highlightSquares(screen, gs, validMoves, sqSelected)
     drawPieces(screen, gs.board)  # This function will draw the pieces on top of the squares
-    drawMoveLog(screen, gs, moveLogFont)
+    drawMoveLog(screen, gs, moveLogFont)  # This function will write the moves on the side of the board
 
 
 """

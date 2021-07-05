@@ -615,14 +615,14 @@ class Move:
             self.pieceCaptured = 'wp' if self.pieceMoved == 'bp' else 'bp'
 
         self.isCapture = self.pieceCaptured != '--'
-        self.moveID = int(str(self.startRow) + str(self.startCol) + str(self.endRow) + str(self.endCol))
+        self.moveID = self.startRow * 1000 + self.startCol * 100 + self.endRow * 10 + self.endCol
+
+    def getRankFile(self, r, c):
+        return self.colsToFiles[c] + self.rowsToRanks[r]
 
     def getChessNotation(self):
         # [HINT] You can work upon this in future and make proper Chess Notation.
         return self.getRankFile(self.startRow, self.startCol) + self.getRankFile(self.endRow, self.endCol)
-
-    def getRankFile(self, r, c):
-        return self.colsToFiles[c] + self.rowsToRanks[r]
 
     """
     Overriding the Equals operator

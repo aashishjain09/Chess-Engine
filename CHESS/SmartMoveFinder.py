@@ -1,6 +1,63 @@
 import random
 
 pieceScore = {'K': 0, 'Q': 10, 'R': 5, 'B': 3, 'N': 3, 'p': 1}
+
+Kweights = [[1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 2, 2, 2, 2, 2, 2, 1],
+            [1, 2, 3, 3, 3, 3, 2, 1],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [1, 2, 3, 3, 3, 3, 2, 1],
+            [1, 2, 2, 2, 2, 2, 2, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1]]
+
+Bweights = [[4, 3, 2, 1, 1, 2, 3, 4],
+            [3, 4, 3, 2, 2, 3, 4, 3],
+            [2, 3, 4, 3, 3, 4, 3, 2],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [2, 3, 4, 3, 3, 4, 3, 2],
+            [3, 4, 3, 2, 2, 3, 4, 3],
+            [1, 1, 1, 1, 1, 1, 1, 1]]
+
+Qweights = [[1, 1, 1, 3, 1, 1, 1, 1],
+            [1, 2, 3, 3, 3, 1, 1, 1],
+            [1, 4, 3, 3, 3, 4, 2, 1],
+            [1, 2, 3, 3, 3, 2, 2, 1],
+            [1, 2, 3, 3, 3, 2, 2, 1],
+            [1, 4, 3, 3, 3, 4, 2, 1],
+            [1, 2, 3, 3, 3, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1]]
+
+Rweights = [[4, 3, 4, 4, 4, 4, 3, 4],
+            [4, 4, 4, 4, 4, 4, 4, 4],
+            [1, 1, 2, 3, 3, 2, 1, 1],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [1, 1, 2, 3, 3, 2, 1, 1],
+            [4, 4, 4, 4, 4, 4, 4, 4],
+            [4, 3, 4, 4, 4, 4, 3, 4]]
+
+Wpweights = [[8, 8, 8, 8, 8, 8, 8, 8],
+            [8, 8, 8, 8, 8, 8, 8, 8],
+            [5, 6, 6, 7, 7, 6, 6, 5],
+            [2, 3, 3, 5, 5, 3, 3, 2],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [1, 1, 2, 3, 3, 2, 1, 1],
+            [1, 1, 1, 0, 0, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0]]
+
+Bpweights = [[0, 0, 0, 0, 0, 0, 0, 0],
+            [1, 1, 1, 0, 0, 1, 1, 1],
+            [1, 1, 2, 3, 3, 2, 1, 1],
+            [1, 2, 3, 4, 4, 3, 2, 1],
+            [2, 3, 3, 5, 5, 3, 3, 2],
+            [5, 6, 6, 7, 7, 6, 6, 5],
+            [8, 8, 8, 8, 8, 8, 8, 8],
+            [8, 8, 8, 8, 8, 8, 8, 8]]
+
+piecePositionScores = {'N': Kweights, 'Q': Qweights, 'R': Rweights, 'B': Bweights, 'wp': Wpweights, 'bp': Bpweights}
+
 CHECKMATE = 1000
 STALEMATE = 0
 DEPTH = 3
@@ -54,15 +111,18 @@ def findBestMoveOld(gs, validMoves):
 """
 Helper method to make the first recursive call
 """
-def findBestMove(gs, validMoves):
+def findBestMove(gs, validMoves, returnQueue):
     global nextMove
     nextMove = None
     # findMoveMinMax(gs, validMoves, DEPTH, gs.whiteToMove)
     findMoveNegaMax(gs, validMoves, DEPTH, 1 if gs.whiteToMove else -1)
     # findMoveNegaMaxAlphaBeta(gs, validMoves, DEPTH, -CHECKMATE, CHECKMATE, 1 if gs.whiteToMove else -1)
-    return nextMove
+    returnQueue.put(nextMove)
 
 
+"""
+Returns a best move by applying MinMax Algorithm with various depth of recursion
+"""
 def findMoveMinMax(gs, validMoves, depth, whiteToMove):
     global nextMove
     if depth == 0:
@@ -95,7 +155,7 @@ def findMoveMinMax(gs, validMoves, depth, whiteToMove):
 
 
 """
-This is a cleaner way of writing the MinMax Algorithm
+This is a cleaner way of writing the MinMax Algorithm, but the functionality is same.
 """
 def findMoveNegaMax(gs, validMoves, depth, turnMultiplier):
     global nextMove
@@ -117,8 +177,8 @@ def findMoveNegaMax(gs, validMoves, depth, turnMultiplier):
 
 """
 This is based on Alpha-Beta Pruning of the MinMax Tree.
-This improves the AI while decreasing the computing time of the next move.
-This takes two more variables known as Alpha(the max value) and Beta(the min value).
+Improves the AI while decreasing the computing time of the next move.
+Takes two more variables known as Alpha(the max value) and Beta(the min value).
 """
 def findMoveNegaMaxAlphaBeta(gs, validMoves, depth, alpha, beta, turnMultiplier):
     global nextMove
@@ -135,6 +195,7 @@ def findMoveNegaMaxAlphaBeta(gs, validMoves, depth, alpha, beta, turnMultiplier)
             maxScore = score
             if depth == DEPTH:
                 nextMove = move
+                print(move, maxScore)
         gs.undoMove()
 
         # This code performs pruning.
@@ -161,18 +222,26 @@ def scoreBoard(gs):
         return STALEMATE
 
     score = 0
-    for row in gs.board:
-        for square in row:
-            if square[0] == 'w':
-                score += pieceScore[square[1]]
-            elif square[0] == 'b':
-                score -= pieceScore[square[1]]
+    for r, row in enumerate(gs.board):
+        for c, square in enumerate(row):
+            if square != '--':
+                piecePositionScore = 0
+                if square[1] != 'K':  # No position table for a King, yet.
+                    if square[1] == 'p':  # For a pawn we need it's color also
+                        piecePositionScore = piecePositionScores[square][r][c]
+                    else:  # For any other piece
+                        piecePositionScore = piecePositionScores[square[1]][r][c]
+
+                if square[0] == 'w':
+                    score += pieceScore[square[1]] + piecePositionScore * .1
+                elif square[0] == 'b':
+                    score -= pieceScore[square[1]] + piecePositionScore * .1
 
     return score
 
 
 """
-Scores the board based on material
+Scores the board based on material only.
 """
 def scoreMaterial(board):
     score = 0
